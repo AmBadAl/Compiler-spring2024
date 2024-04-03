@@ -35,13 +35,14 @@ def is_num(curr_string, look_ahead, prev_result):
         else:
             return None, -1
     else:
-        if curr_string.startswith(tuple(DIGITS)) and look_ahead in (DIGITS):
-            return None, 1
+        if curr_string.startswith(tuple(DIGITS)) and look_ahead not in (VALID_CHARS):
+            return None, -2
         elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (LETTERS):
             return None, -2
-        elif curr_string.startswith(tuple(DIGITS)) and look_ahead 
-            #todo: error handling
-            return 'error'
+        elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (DIGITS):
+            return None, 1
+        else:
+            return ('NUM', curr_string), 1
 
 
 def is_symbol(curr_string, look_ahead, prev_result):

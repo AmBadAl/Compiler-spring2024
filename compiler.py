@@ -1,48 +1,40 @@
 WHITESPACES = [' ', '\n', '\r', '\t', '\v', '\f']
-SYMBOLS = [';', ':', ',', '[', ']', '{', '}', '+', '-', '*', '=', '<']
+SYMBOLS = [';', ':', ',', '[', ']', '(', ')', '{', '}', '+', '-', '*', '=', '<']
 LETTERS = [chr(i) for i in range(ord('A'),ord('Z')+1)] + [chr(i) for i in range(ord('a'), ord('z')+1)]
 DIGITS = [chr(i) for i in range(ord('0'),ord('9')+1)]
 KEYWORDS = ['if', 'else', 'void', 'int', 'for', 'break', 'return', 'endif']
 VALID_CHARS = WHITESPACES + SYMBOLS + LETTERS + DIGITS + KEYWORDS
 
+
 def is_id_keyword(curr_string, look_ahead, prev_result):
     if prev_result < 0:
         return None, -1
     
-    if prev_result == 0:
-        if curr_string.startswith(tuple(LETTERS)):
-            return None, 1
+    if curr_string.startswith(tuple(LETTERS)) and look_ahead not in (VALID_CHARS):
+        return None, -2
+    elif curr_string.startswith(tuple(LETTERS)) and look_ahead not in (LETTERS + DIGITS):
+        if curr_string in KEYWORDS:
+            return ('KEYWORD', curr_string), 1
         else:
-            return None, -1
+            return ('ID', curr_string), 1            
+    elif curr_string.startswith(tuple(LETTERS)):
+        return None, 1
     else:
-        if curr_string.startswith(tuple(LETTERS)) and look_ahead not in (VALID_CHARS):
-            return None, -2
-        elif curr_string.startswith(tuple(LETTERS)) and look_ahead not in (LETTERS + DIGITS):
-            if curr_string in KEYWORDS:
-                return ('KEYWORD', curr_string), 1
-            else:
-                return ('ID', curr_string), 1            
-        elif curr_string.startswith(tuple(LETTERS)):
-            return None, 1
+        return None, -1
+
 
 def is_num(curr_string, look_ahead, prev_result):
     if prev_result < 0:
         return None, -1
     
-    if prev_result == 0:
-        if curr_string.startswith(tuple(DIGITS)):
-            return None, 1
-        else:
-            return None, -1
+    if not curr_string.startswith(tuple(DIGITS)):
+        return None, -1
+    elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (LETTERS):
+        return None, -2
+    elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (DIGITS):
+        return None, 1
     else:
-        if curr_string.startswith(tuple(DIGITS)) and look_ahead not in (VALID_CHARS):
-            return None, -2
-        elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (LETTERS):
-            return None, -2
-        elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (DIGITS):
-            return None, 1
-        else:
-            return ('NUM', curr_string), 1
+        return ('NUM', curr_string), 1
 
 
 def is_symbol(curr_string, look_ahead, prev_result):
@@ -52,11 +44,11 @@ def is_symbol(curr_string, look_ahead, prev_result):
     if curr_string == '*' and look_ahead == '/':
         return None, -2             # panic (umnatched comment)
     elif curr_string in SYMBOLS and curr_string != '=':
-        return ('SYMBOLS', curr_string), 1
+        return ('SYMBOL', curr_string), 1
     elif curr_string == '=' and look_ahead == '=':
-        return ('SYMBOLS', '=='), 1
+        return ('SYMBOL', '=='), 1
     elif curr_string == '=' and look_ahead != '=':
-        return ('SYMBOLS', '='), 1
+        return ('SYMBOL', '='), 1
     else:
         return None, -1
 
@@ -85,15 +77,10 @@ def is_whitespace(curr_string, look_ahead, prev_result):
     if prev_result < 0:
         return None, -1
 
-    if curr_string == ' ':
+    if curr_string in WHITESPACES:
         return ('WHITESPACE', curr_string), 1
-    elif curr_string == '\\':
-        if (curr_string+look_ahead) in WHITESPACES:
-            return ('WHITESPACE', curr_string+look_ahead), 1
-        else:
-            return None, -2         # panic (invalid input)
     else:
-        return None, -1             # not whitespace
+        return None, -1
 
 
 def get_next_token(text):
@@ -155,10 +142,10 @@ def get_next_token(text):
 
             # check whitespace
             token, whitespace_result = is_whitespace(buffer, look_ahead, whitespace_result)
-            if whitespace_result == -2:
-                is_panic = True
-                panic_type = 'Invalid input'
-                break
+            # if whitespace_result == -2:
+            #     is_panic = True
+            #     panic_type = 'Invalid input'
+            #     break
             if token is not None:
                 yield token, line_number
                 break
@@ -176,7 +163,7 @@ def get_next_token(text):
             move_len = len(buffer)
         # check unclosed comment
         elif token is None and comment_result == 1:
-            panic = ('Unclosed comment', buffer)
+            panic = ('Unclosed comment', f'{buffer[:7]}...')
             yield panic, line_number
             move_len = len(buffer)
         # check new line
@@ -195,39 +182,43 @@ def get_next_token(text):
 
 if __name__ == '__main__':
     token_tags = ['NUM', 'ID', 'KEYWORD', 'SYMBOL']
-    symboltable_tags = ['ID', 'KEYWROD']
+    symboltable_tags = ['ID', 'KEYWORD']
     panic_tags = ['Invalid input', 'Unclosed comment', 'Unmatched comment', 'Invalid number']
 
     # read input
-    addr = './testcases/T01/input.txt'
+    addr = './testcases/T05/input.txt'
     with open(addr, 'r') as f:
         text = f.read()
     
     # generate tokens
     tokens = ''
-    symbols = set()
+    symbols = set(KEYWORDS)
     errors = ''
-    prev_linenumber = 0
+    prev_line_t, prev_line_e = 0, 0
     for t, line_number in get_next_token(text):
         if t[0] in token_tags:
-            if line_number != prev_linenumber:
+            if line_number != prev_line_t:
                 tokens += f'\n{line_number}.\t'
-                prev_linenumber = line_number
+                prev_line_t = line_number
             tokens += f'{(t[0], t[1])} '
         
-        elif t[0] in panic_tags:
-            if line_number != prev_linenumber:
+        if t[0] in panic_tags:
+            if line_number != prev_line_e:
                 errors += f'\n{line_number}.\t'
-                prev_linenumber = line_number
+                prev_line_e = line_number
             errors += f'{(t[1], t[0])} '
 
-        elif t[0] in symboltable_tags:
+        if t[0] in symboltable_tags:
             symbols.add(t[1])
 
     # save results in file
     with open('./tokens.txt', 'w') as f:
-        f.write(tokens[2:])
+        f.write(tokens[1:].replace("'", ''))
     with open('./lexical_errors.txt', 'w') as f:
-        f.write(errors[2:])
+        errors = errors[1:].replace("'", '')
+        if errors == '':
+            f.write('There is no lexical error.')
+        else:
+            f.write(errors)
     with open('./symbol_table.txt', 'w') as f:
         f.write('\n'.join([f'{i+1}.\t{x}' for i, x in enumerate(symbols)]))

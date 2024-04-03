@@ -1,6 +1,49 @@
+import re
+
 WHITESPACES = [' ', '\n', '\r', '\t', '\v', '\f']
 SYMBOLS = [';', ':', ',', '[', ']', '{', '}', '+', '-', '*', '=', '<']
+LETTERS = [chr(i) for i in range(ord('A'),ord('Z')+1)] + [chr(i) for i in range(ord('a'), ord('z')+1)]
+DIGITS = [chr(i) for i in range(ord('0'),ord('9')+1)]
+KEYWORDS = ['if', 'else', 'void', 'int', 'for', 'break', 'return', 'endif']
+VALID_CHARS = WHITESPACES + SYMBOLS + LETTERS + DIGITS + KEYWORDS
 
+def is_id_keyword(curr_string, look_ahead, prev_result):
+    if prev_result < 0:
+        return None, -1
+    
+    if prev_result == 0:
+        if curr_string.startswith(tuple(LETTERS)):
+            return None, 1
+        else:
+            return None, -1
+    else:
+        if curr_string.startswith(tuple(LETTERS)) and look_ahead not in (VALID_CHARS):
+            return None, -2
+        elif curr_string.startswith(tuple(LETTERS)) and look_ahead not in (LETTERS + DIGITS):
+            if curr_string in KEYWORDS:
+                return ('KEYWORD', curr_string), 1
+            else:
+                return ('ID', curr_string), 1            
+        elif curr_string.startswith(tuple(LETTERS)):
+            return None, 1
+
+def is_num(curr_string, look_ahead, prev_result):
+    if prev_result < 0:
+        return None, -1
+    
+    if prev_result == 0:
+        if curr_string.startswith(tuple(DIGITS)):
+            return None, 1
+        else:
+            return None, -1
+    else:
+        if curr_string.startswith(tuple(DIGITS)) and look_ahead in (DIGITS):
+            return None, 1
+        elif curr_string.startswith(tuple(DIGITS)) and look_ahead in (LETTERS):
+            return None, -2
+        elif curr_string.startswith(tuple(DIGITS)) and look_ahead 
+            #todo: error handling
+            return 'error'
 
 
 def is_symbol(curr_string, look_ahead, prev_result):
@@ -17,11 +60,11 @@ def is_symbol(curr_string, look_ahead, prev_result):
         else:
             return None, -1
 
-def is_comment(curr_string, prev_resutl):
-    if prev_resutl < 0:
+def is_comment(curr_string, prev_result):
+    if prev_result < 0:
         return None, -1
     
-    if prev_resutl == 0:
+    if prev_result == 0:
         if curr_string.startswith('/'):
             return None, 1
         else:

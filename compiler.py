@@ -1,5 +1,3 @@
-import re
-
 WHITESPACES = [' ', '\n', '\r', '\t', '\v', '\f']
 SYMBOLS = [';', ':', ',', '[', ']', '{', '}', '+', '-', '*', '=', '<']
 LETTERS = [chr(i) for i in range(ord('A'),ord('Z')+1)] + [chr(i) for i in range(ord('a'), ord('z')+1)]
@@ -123,7 +121,7 @@ def get_next_token(text):
                 break
 
             # check id, keyword
-            token, id_result = is_id(buffer, look_ahead, id_result)
+            token, id_result = is_id_keyword(buffer, look_ahead, id_result)
             if id_result == -2:
                 is_panic = True
                 panic_type = 'Invalid input'

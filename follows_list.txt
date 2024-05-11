@@ -1,0 +1,48 @@
+Program	$
+Declaration_list	ID	;	NUM	(	{	}	break	if	for	return	+	-	$
+Declaration	ID	;	NUM	(	int	void	{	}	break	if	for	return	+	-	$
+Declaration_initial	;	[	(	)	,
+Declaration_prime	ID	;	NUM	(	int	void	{	}	break	if	for	return	+	-	$
+Var_declaration_prime	ID	;	NUM	(	int	void	{	}	break	if	for	return	+	-	$
+Fun_declaration_prime	ID	;	NUM	(	int	void	{	}	break	if	for	return	+	-	$
+Type_specifier	ID
+Params	)
+Param_list	)
+Param	)	,
+Param_prime	)	,
+Compound_stmt	ID	;	NUM	(	int	void	{	}	break	if	endif	else	for	return	+	-	$
+Statement_list	}
+Statement	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Expression_stmt	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Selection_stmt	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Else_stmt	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Iteration_stmt	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Return_stmt	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Return_stmt_prime	ID	;	NUM	(	{	}	break	if	endif	else	for	return	+	-
+Expression	;	]	)	,
+B	;	]	)	,
+H	;	]	)	,
+Simple_expression_zegond	;	]	)	,
+Simple_expression_prime	;	]	)	,
+C	;	]	)	,
+Relop	ID	NUM	(	+	-
+Additive_expression	;	]	)	,
+Additive_expression_prime	;	]	)	,	<	==
+Additive_expression_zegond	;	]	)	,	<	==
+D	;	]	)	,	<	==
+Addop	ID	NUM	(	+	-
+Term	;	]	)	,	<	==	+	-
+Term_prime	;	]	)	,	<	==	+	-
+Term_zegond	;	]	)	,	<	==	+	-
+G	;	]	)	,	<	==	+	-
+Signed_factor	;	]	)	,	<	==	+	-	*
+Signed_factor_prime	;	]	)	,	<	==	+	-	*
+Signed_factor_zegond	;	]	)	,	<	==	+	-	*
+Factor	;	]	)	,	<	==	+	-	*
+Var_call_prime	;	]	)	,	<	==	+	-	*
+Var_prime	;	]	)	,	<	==	+	-	*
+Factor_prime	;	]	)	,	<	==	+	-	*
+Factor_zegond	;	]	)	,	<	==	+	-	*
+Args	)
+Arg_list	)
+Arg_list_prime	)

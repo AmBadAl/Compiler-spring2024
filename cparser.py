@@ -45,7 +45,7 @@ class Parser():
             for i, line in enumerate(lines):
                 infos = line.strip().split('->')
                 NT = infos[0]
-                RHS = infos[1].split(' ')
+                RHS = infos[1].strip().split(' ')
 
                 if NT not in productions.keys():
                     productions[NT] = [(i+1, RHS)]
@@ -62,6 +62,9 @@ class Parser():
 
         for NT in NT_list:
             def NT_function(NT=NT):
+                if self.look_ahead == '':
+                    self.current_node.parent = None
+                    return False
                 # check productions predict set
                 for prod in self.productions[NT]:
                     prod_num, prod_elem = prod
@@ -72,7 +75,7 @@ class Parser():
                                 Node('epsilon', parent=self.current_node)
                                 continue
                             elif elem in NT_list:
-                                new_node = Node(elem, parent=self.current_node)
+                                new_node = Node(elem.replace('_', '-'), parent=self.current_node)
                                 old_node = self.current_node
                                 self.current_node = new_node
                                 result = result and self.PRD_functions[elem]()
@@ -83,33 +86,43 @@ class Parser():
                                 self.current_node = new_node
                                 result = result and self._Match(elem)
                                 self.current_node = old_node
+                            
+                            if not result:
+                                return result
                         print(prod_num)
                         return result
 
                 # check NT follow set for synchronization
                 if self.look_ahead in self.follows_list[NT]:
                     print(f'missing {NT}')
-                    self.syntax_errors.append(
-                        (self.line_number, f'missing {NT}'))
-                    return False
+                    self.syntax_errors.append((self.line_number, f'missing {NT}'))
+                    self.current_node.parent = None
+                    return True
                 else:
-                    self.syntax_errors.append(
-                        (self.line_number, f'illegal {self.look_ahead}'))
-                    print(f'illigal {self.look_ahead}')
+                    if self.look_ahead == '$':
+                        self.syntax_errors.append((self.line_number, f'Unexpected EOF'))
+                        print(f'Unexpected EOF')
+                    else:
+                        self.syntax_errors.append((self.line_number, f'illegal {self.look_ahead}'))
+                        print(f'illegal {self.look_ahead}')
+                    
                     self.look_ahead = self._get_next_token()
-                    return NT_function()
+                    return self.PRD_functions[NT]()
 
             self.PRD_functions[NT] = NT_function
 
     def _Match(self, expected):
-        if self.look_ahead == expected:
+        if self.look_ahead == '':
+            return False
+        elif self.look_ahead == expected:
             self.look_ahead = self._get_next_token()
             return True
         else:
             print(f'missing {expected}')
+            self.current_node.parent = None
             self.syntax_errors.append(
                 (self.line_number, f'missing {expected}'))
-            return False
+            return True
 
     def _get_next_token(self):
         while True:
@@ -121,18 +134,26 @@ class Parser():
             elif token[0] in ['KEYWORD', 'SYMBOL', 'EOF']:
                 self.token = token
                 self.line_number = line_number
+                if self.look_ahead == '$':
+                    return ''
                 return token[1]
 
     def parse(self):
         self.look_ahead = self._get_next_token()
-        return self.PRD_functions['Program']()
+        parse_result = self.PRD_functions['Program']()
+        if parse_result:
+            Node('$', parent=self.root)
+        return parse_result 
     
     def save_parse_tree(self, addr):
-        output = ''
         with open(addr, 'w', encoding="utf-8") as f:
             for pre, _, node in RenderTree(self.root):
                 f.write(f'{pre}{node.name}\n'.replace("'", ''))
     
+    def save_syntax_errors(self, addr):
+        with open(addr, 'w', encoding='utf-8') as f:
+            for error in self.syntax_errors:
+                f.write(f'#{error[0]} : syntax error, {error[1]}\n')
 
 if __name__ == '__main__':
     parser = Parser(None)

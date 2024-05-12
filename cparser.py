@@ -95,7 +95,8 @@ class Parser():
                 # check NT follow set for synchronization
                 if self.look_ahead in self.follows_list[NT]:
                     print(f'missing {NT}')
-                    self.syntax_errors.append((self.line_number, f'missing {NT}'))
+                    name = NT.replace('_', '-')
+                    self.syntax_errors.append((self.line_number, f"missing {name}"))
                     self.current_node.parent = None
                     return True
                 else:
@@ -152,8 +153,11 @@ class Parser():
     
     def save_syntax_errors(self, addr):
         with open(addr, 'w', encoding='utf-8') as f:
-            for error in self.syntax_errors:
-                f.write(f'#{error[0]} : syntax error, {error[1]}\n')
+            if len(self.syntax_errors) == 0:
+                f.write('There is no syntax error.')
+            else:
+                for error in self.syntax_errors:
+                    f.write(f'#{error[0]} : syntax error, {error[1]}\n')
 
 if __name__ == '__main__':
     parser = Parser(None)

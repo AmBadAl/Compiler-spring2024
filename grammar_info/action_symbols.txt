@@ -1,0 +1,85 @@
+Program->Declaration_list
+Declaration_list->Declaration Declaration_list
+Declaration_list->
+Declaration->Declaration_initial Declaration_prime
+Declaration_initial->#push Type_specifier #push ID
+Declaration_prime->Fun_declaration_prime
+Declaration_prime->Var_declaration_prime
+Var_declaration_prime->#var_declare;
+Var_declaration_prime->[ #push NUM ] #arr_declare;
+Fun_declaration_prime->#func_declare ( Params ) #process_func Compound_stmt #func_end
+Type_specifier->int
+Type_specifier->void
+Params->#push int #push ID Param_prime Param_list
+Params->void
+Param_list->, Param Param_list
+Param_list->
+Param->Declaration_initial Param_prime
+Param_prime->#arr_param [ ] 
+Param_prime->#var_param
+Compound_stmt->{ Declaration_list Statement_list }
+Statement_list->Statement Statement_list
+Statement_list->
+Statement->Expression_stmt
+Statement->Compound_stmt
+Statement->Selection_stmt 
+Statement->Iteration_stmt 
+Statement->Return_stmt
+Expression_stmt->Expression ; #pop
+Expression_stmt->break #break ;
+Expression_stmt->;
+Selection_stmt->if ( Expression ) #save Statement Else_stmt
+Else_stmt->endif #jpf
+Else_stmt->else #jpf_save Statement #jp endif
+Iteration_stmt->for #for ( Expression ; Expression ; Expression ) Statement
+Return_stmt->return Return_stmt_prime #return
+Return_stmt_prime->;
+Return_stmt_prime->Expression #set_return_value ;
+Expression->Simple_expression_zegond
+Expression->#pid ID B
+B->= Expression #assign
+B->[ Expression ] #get_arr H 
+B->Simple_expression_prime
+H->= Expression #assign
+H->G D C
+Simple_expression_zegond-> Additive_expression_zegond C
+Simple_expression_prime-> Additive_expression_prime C
+C->#push Relop Additive_expression #relop
+C-> 
+Relop-><
+Relop->==
+Additive_expression-> Term D
+Additive_expression_prime->Term_prime D
+Additive_expression_zegond->Term_zegond D
+D->#push Addop Term #add_sub D
+D->
+Addop->+
+Addop->-
+Term->Signed_factor G
+Term_prime->Signed_factor_prime G
+Term_zegond->Signed_factor_zegond G
+G->* Signed_factor #mult G
+G->
+Signed_factor->#push + Factor
+Signed_factor->#push - Factor
+Signed_factor->Factor
+Signed_factor_prime->Factor_prime
+Signed_factor_zegond->#push + Factor
+Signed_factor_zegond->#push - Factor
+Signed_factor_zegond->Factor_zegond
+Factor->( Expression )
+Factor->#pid ID Var_call_prime
+Factor->#push NUM
+Var_call_prime->#func_id ( Args ) #call
+Var_call_prime->Var_prime
+Var_prime->[ Expression ] #get_arr
+Var_prime->
+Factor_prime->#func_id ( Args ) #call
+Factor_prime->
+Factor_zegond-> ( Expression )
+Factor_zegond->#push NUM
+Args-> Arg_list
+Args->
+Arg_list->Expression #arg Arg_list_prime 
+Arg_list_prime->, Expression #arg Arg_list_prime
+Arg_list_prime->

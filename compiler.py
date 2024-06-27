@@ -1,6 +1,11 @@
 from scanner import Scanner
 from cparser import Parser
 
+FOLLOWS_LIST = './grammar_info/follows_list.txt'
+PREDICTS_LIST = './grammar_info/predicts_list.txt'
+GRAMMAR = './grammar_info/grammar_new.txt'
+
+
 if __name__ == '__main__':
     addr = './input.txt'
     scanner = Scanner(addr)

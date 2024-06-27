@@ -1,16 +1,11 @@
 from anytree import Node, RenderTree
-from anytree.exporter import JsonExporter  
-
-FOLLOWS_LIST = './follows_list.txt'
-PREDICTS_LIST = './predicts_list.txt'
-GRAMMAR = './grammar_new.txt'
 
 
 class Parser():
-    def __init__(self, scanner):
-        self.follows_list = self._read_follows(FOLLOWS_LIST)
-        self.predict_list = self._read_predicts(PREDICTS_LIST)
-        self.productions = self._read_productions(GRAMMAR)
+    def __init__(self, scanner, follows_path, predicts_path, grammar_path):
+        self.follows_list = self._read_follows(follows_path)
+        self.predict_list = self._read_predicts(predicts_path)
+        self.productions = self._read_productions(grammar_path)
         self._generate_functions()
         self.scanner = scanner
         self.look_ahead = None
@@ -158,6 +153,7 @@ class Parser():
             else:
                 for error in self.syntax_errors:
                     f.write(f'#{error[0]} : syntax error, {error[1]}\n')
+
 
 if __name__ == '__main__':
     parser = Parser(None)

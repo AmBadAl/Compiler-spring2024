@@ -1,19 +1,23 @@
 from anytree import Node, RenderTree
+from scanner import Scanner
 
 
 class Parser():
-    def __init__(self, scanner, follows_path, predicts_path, grammar_path):
+    def __init__(self, input_addr, follows_path, predicts_path, grammar_path):
+        self.scanner = self._get_scanner(input_addr)
         self.follows_list = self._read_follows(follows_path)
         self.predict_list = self._read_predicts(predicts_path)
         self.productions = self._read_productions(grammar_path)
         self._generate_functions()
-        self.scanner = scanner
         self.look_ahead = None
         self.token = None
         self.line_number = None
         self.syntax_errors = []
         self.root = Node('Program')
         self.current_node = self.root
+
+    def _get_scanner(self, input_addr):
+        return Scanner(input_addr)
 
     def _read_follows(self, addr):
         follows = dict()

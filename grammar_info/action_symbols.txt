@@ -26,12 +26,12 @@ Statement->Selection_stmt
 Statement->Iteration_stmt 
 Statement->Return_stmt
 Expression_stmt->Expression ; #pop
-Expression_stmt->break #break ;
+Expression_stmt->break #break_loop ;
 Expression_stmt->;
 Selection_stmt->if ( Expression ) #save Statement Else_stmt
 Else_stmt->endif #jpf
 Else_stmt->else #jpf_save Statement #jp endif
-Iteration_stmt->for #for ( Expression ; Expression ; Expression ) Statement
+Iteration_stmt->for #for_loop ( Expression ; Expression ; Expression ) Statement
 Return_stmt->return Return_stmt_prime #return
 Return_stmt_prime->;
 Return_stmt_prime->Expression #set_return_value ;

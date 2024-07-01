@@ -165,6 +165,16 @@ class CodeGenerator:
         #todo: check type of a and b for semantic errors
         self.insert_code(f'(ASSIGN, {a}, {b})')
         self.pop(1)
+    
+    def get_arr(self):
+        t1 = self.memory.get_tmp()
+        #todo: check t1 type
+        self.insert_code(f'(MULT, {self.stack[-1]}, #4, {t1})')
+        self.pop()
+        t2 = self.memory.get_tmp()
+        self.insert_code(f'(ADD, {t1}, {self.stack[-1], {t2}})')
+        self.pop()
+        self.push(f'@{t2}')
 
     def for_loop(self):
         #todo

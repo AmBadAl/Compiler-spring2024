@@ -50,14 +50,36 @@ class SymbolTable:
         self.mm.increase(1)
 
     def get_by_addr(self, addr):
-        #todo
+        flag = True
+        for row in self.table[::-1]:
+            if row['scope'] == 0:
+                flag = False
+                if row['addr'] == addr:
+                    return row
+            elif (flag and row['addr'] == addr):
+                return row
         return None
 
     def get_by_name(self, name):
-        #todo
+        flag = True
+        for row in self.table[::-1]:
+            if row['scope'] == 0:
+                flag = False
+                if row['lexeme'] == name:
+                    return row
+            elif (flag and row['lexeme'] == name):
+                return row
         return None
 
     def get_index(self, name):
+        flag = True
+        for i, row in zip(range(len(self.table) - 1, -1, -1), self.table[::-1]):
+            if row['scope'] == 0:
+                flag = False
+                if row['lexeme'] == name:
+                    return i
+            elif (flag and row['lexeme'] == name):
+                return i
         return None
 
 
@@ -112,10 +134,24 @@ class CodeGenerator:
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i}, )', i=self.stack[-1])
         self.pop(2)
 
-    def pid(self):
-        #todo
-        return
+    def pid(self, lookahead):
+        row = self.ST.get_by_name(lookahead)
+        if row is None:
+            #todo: handle semantic errors
+            return
+        else:
+            self.push(row['addr'])
         
+    def relop(self):
+        a, relop, b = self.stack[-3:]
+        #todo: check type of a and b for semantic errors
+        t = self.memory.get_tmp()
+        if (relop == '=='):
+            self.insert_code(f'(EQ, {a}, {b}, {t})')
+        else:
+            self.insert_code(f'(LT, {a}, {b}, {t})')
+        self.pop(3)
+        self.push(t)
 
     def add_sub(self):
         a, op, b = self.stack[-3:]
@@ -141,6 +177,16 @@ class CodeGenerator:
         #todo: check type of a and b for semantic errors
         self.insert_code(f'(ASSIGN, {a}, {b})')
         self.pop(1)
+    
+    def get_arr(self):
+        t1 = self.memory.get_tmp()
+        #todo: check t1 type
+        self.insert_code(f'(MULT, {self.stack[-1]}, #4, {t1})')
+        self.pop()
+        t2 = self.memory.get_tmp()
+        self.insert_code(f'(ADD, {t1}, {self.stack[-1], {t2}})')
+        self.pop()
+        self.push(f'@{t2}')
 
     def for_loop(self):
         #todo

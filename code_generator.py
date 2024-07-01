@@ -93,6 +93,7 @@ class CodeGenerator:
         self.i = 0
         self.curr_param_count = 0
         self.curr_funcs_name = []
+        self.curr_loops_name = []
         self._initialize()
 
     def _initialize(self):
@@ -115,22 +116,22 @@ class CodeGenerator:
         for i in range(n):
             self.stack.pop()
 
-    def save(self):
+    def save(self, lookahead):
         self.push(self.i)
         self.insert_code('')
         # self.i += 1
 
-    def jpf_save(self):
+    def jpf_save(self, lookahead):
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i + 1}, )', i=self.stack[-1])
         self.pop(2)
         self.push(self.i)
-        # self.insert_code("(, , , )")
+        self.insert_code('')
 
-    def jp(self):
+    def jp(self, lookahead):
         self.insert_code(f'(JPF, {self.i}, , )', i=self.stack[-1])
         self.pop(1)
 
-    def jpf(self):
+    def jpf(self, lookahead):
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i}, )', i=self.stack[-1])
         self.pop(2)
 
@@ -142,7 +143,7 @@ class CodeGenerator:
         else:
             self.push(row['addr'])
         
-    def relop(self):
+    def relop(self, lookahead):
         a, relop, b = self.stack[-3:]
         #todo: check type of a and b for semantic errors
         t = self.memory.get_tmp()
@@ -153,7 +154,7 @@ class CodeGenerator:
         self.pop(3)
         self.push(t)
 
-    def add_sub(self):
+    def add_sub(self, lookahead):
         a, op, b = self.stack[-3:]
         #todo: check type of a and b for semantic errors
         t = self.memory.get_tmp()
@@ -164,7 +165,7 @@ class CodeGenerator:
         self.pop(3)
         self.push(t)
 
-    def mult(self):
+    def mult(self, lookahead):
         a, b = self.stack[-2:]
         #todo: check type of a and b for semantic errors
         t = self.memory.get_tmp()
@@ -172,13 +173,13 @@ class CodeGenerator:
         self.pop(2)
         self.push(t)
 
-    def assign(self):
+    def assign(self, lookahead):
         b, a = self.stack[-2:]
         #todo: check type of a and b for semantic errors
         self.insert_code(f'(ASSIGN, {a}, {b})')
         self.pop(1)
     
-    def get_arr(self):
+    def get_arr(self, lookahead):
         t1 = self.memory.get_tmp()
         #todo: check t1 type
         self.insert_code(f'(MULT, {self.stack[-1]}, #4, {t1})')
@@ -188,13 +189,31 @@ class CodeGenerator:
         self.pop()
         self.push(f'@{t2}')
 
-    def for_loop(self):
-        #todo
-        return
+    def for_loop(self, lookahead):
+        t = self.memory.get_tmp()
+        self.curr_loops_name.append(t)
+        self.push(t)
+        self.push(self.i)
+        self.insert_code('')
 
-    def break_loop(self):
-        #todo
-        return
+    def for_label(self, lookahead):
+        self.push(self.i)
+    
+    def for_jpf(self, lookahead):
+        self.push(self.i)
+        self.insert_code('')
+    
+    def for_jmp(self, lookahead):
+        t, for_begin, for_label, rel_op, for_jpf = self.stack[-5:]
+        self.insert_code(f'(JP, {for_label}, , )')
+        self.insert_code(f'(ASSIGN, #{self.i}, {t}, )', i=for_begin)
+        self.insert_code(f'(JPF, {rel_op}, {self.i}, )', i=for_jpf)
+        self.pop(5)
+        self.curr_loops_name.pop()
+
+    def break_loop(self, lookahead):
+        t = self.curr_loops_name[-1]
+        self.insert_code(f'(JP, @{t}, , )')
     
     def var_end(self, lookahead):
         if self.stack[-1].isnumeric():
@@ -213,7 +232,8 @@ class CodeGenerator:
         func_name = self.stack[-1]
         self.pop(2)
         if func_name != 'main':
-            self.save()
+            self.push(self.i)
+            self.insert_code('')
 
     def param_end(self, lookahead):
         attr = {'kind': 'param'}
@@ -282,7 +302,7 @@ class CodeGenerator:
 
 
 
-    def code_gen(self, action, lookahead):
+    def code_gen(self, action, lookahead=None):
         semantic_func = getattr(self, action)
         if semantic_func is None:
             print(f'invalid action: {action}')

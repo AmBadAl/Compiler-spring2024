@@ -43,14 +43,36 @@ class SymbolTable:
         self.mm.increase(1)
 
     def get_by_addr(self, addr):
-        #todo
+        flag = True
+        for row in self.table[::-1]:
+            if row['scope'] == 0:
+                flag = False
+                if row['addr'] == addr:
+                    return row
+            elif (flag and row['addr'] == addr):
+                return row
         return None
 
     def get_by_name(self, name):
-        #todo
+        flag = True
+        for row in self.table[::-1]:
+            if row['scope'] == 0:
+                flag = False
+                if row['lexeme'] == name:
+                    return row
+            elif (flag and row['lexeme'] == name):
+                return row
         return None
 
     def get_index(self, name):
+        flag = True
+        for i, row in zip(range(len(self.table) - 1, -1, -1), self.table[::-1]):
+            if row['scope'] == 0:
+                flag = False
+                if row['lexeme'] == name:
+                    return i
+            elif (flag and row['lexeme'] == name):
+                return i
         return None
 
 

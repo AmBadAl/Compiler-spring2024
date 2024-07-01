@@ -26,7 +26,7 @@ class SymbolTable:
             'lexptr': lexptr,
             'addr': addr,
             'type': type,
-            'attributes': attributes
+            'attr': attributes
         })
         count = attributes['count']
         self.mm.increase(count)
@@ -38,9 +38,20 @@ class SymbolTable:
             'lexptr': lexptr,
             'addr': addr,
             'type': type,
-            'attributes': attributes
+            'attr': attributes
         })
         self.mm.increase(1)
+
+    def get_by_addr(self, addr):
+        #todo
+        return None
+
+    def get_by_name(self, name):
+        #todo
+        return None
+
+    def get_index(self, name):
+        return None
 
 
 class CodeGenerator:
@@ -51,6 +62,9 @@ class CodeGenerator:
         self.stack = []
         self.PB = []
         self.i = 0
+
+        self.curr_param_count = 0
+        self.curr_funcs_name = []
 
 
     def insert_code(self, code, i=None):
@@ -124,8 +138,92 @@ class CodeGenerator:
         #todo
         return
     
+    def var_end(self, lookahead):
+        if self.stack[-1].isnumeric():
+            #array
+            attr = {'count': self.stack[-1]}
+            self.ST.add_variable(self.stack[-2], self.stack[-1], attributes=attr)
+            self.pop(3)
+        else:
+            #simple var
+            self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=None)
+            self.pop(2)
+
+    def func_start(self, lookahead):
+        # todo: if func==main?!
+        self.ST.add_function(self.stack[-1], self.stack[-2], attributes=None)
+        self.pop(2)
+
+    def param_end(self, lookahead):
+        attr = {'kind': 'param'}
+        self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
+        self.pop(2)
+        self.curr_param_count += 1
+
+    def params_end(self, lookahead):
+        attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
+        func_stat = self.ST.get_by_name(self.curr_funcs_name[-1])
+        func_stat['attr'] = attr
+        self.curr_param_count = 0
+
+
+    def func_end(self, lookahead):
+        # todo: if func==main?!
+        return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
+        self.insert_code(f'(JP, @{return_addr}, , )')
+        self.curr_funcs_name.pop()
+
+
+    def set_return_value(self, lookahead):
+        addr = self.ST.get_by_name(self.curr_funcs_name[-1])['addr']
+        self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
+        self.pop()
+    
+
+    def func_return(self, lookahead):
+        return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
+        self.insert_code(f'(JP, @{return_addr}, , )')
+
+
+    def func_arg(self, lookahead):
+        i = self.ST.get_index(self.curr_funcs_name[-1])
+        self.curr_param_count += 1
+        addr = self.ST[i+self.curr_param_count]['addr']
+        self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
+        self.pop()
+    
+
+    def func_call(self, lookahead):
+        func = self.ST.get_by_name(self.curr_funcs_name[-1])
+        func_addr = func['attr']['code_addr']
+        return_addr = func['attr']['return_addr']
+        self.insert_code(f'(ASSIGN, #{self.i+2}, {return_addr})')
+        self.insert_code(f'(JP, {func_addr}, , )')
+
+        if func['type'] != 'void':
+            # todo: where will we use t??
+            t = self.memory.get_tmp()
+            self.insert_code(f"(ASSIGN, {func['addr']}, {t}, )")
+            self.stack.push(t)
+        self.curr_funcs_name.pop()
+
+
+    def func_name(self, lookahead):
+        func = self.ST.get_by_addr(self.stack[-1])
+        self.curr_funcs_name.append(func['lexptr'])
+        self.pop()
+
+
+
 
     def code_gen(self, action, lookahead):
+        semantic_func = getattr(self, action)
+        if semantic_func is None:
+            print(f'invalid action: {action}')
+            return False
+        
+        semantic_func(lookahead)
+        return True
         if (action == 'push'):
             self.push(lookahead)
         elif (action == 'pop'):

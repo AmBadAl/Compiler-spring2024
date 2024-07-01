@@ -5,9 +5,9 @@ Declaration->Declaration_initial Declaration_prime
 Declaration_initial->#push Type_specifier #push ID
 Declaration_prime->Fun_declaration_prime
 Declaration_prime->Var_declaration_prime
-Var_declaration_prime->#var_declare;
-Var_declaration_prime->[ #push NUM ] #arr_declare;
-Fun_declaration_prime->#func_declare ( Params ) #process_func Compound_stmt #func_end
+Var_declaration_prime->#var_end;
+Var_declaration_prime->[ #push NUM ] #var_end;
+Fun_declaration_prime->#func_start ( Params ) #params_end Compound_stmt #func_end
 Type_specifier->int
 Type_specifier->void
 Params->#push int #push ID Param_prime Param_list
@@ -15,8 +15,8 @@ Params->void
 Param_list->, Param Param_list
 Param_list->
 Param->Declaration_initial Param_prime
-Param_prime->#arr_param [ ] 
-Param_prime->#var_param
+Param_prime->#param_end [ ] 
+Param_prime->#param_end
 Compound_stmt->{ Declaration_list Statement_list }
 Statement_list->Statement Statement_list
 Statement_list->
@@ -32,7 +32,7 @@ Selection_stmt->if ( Expression ) #save Statement Else_stmt
 Else_stmt->endif #jpf
 Else_stmt->else #jpf_save Statement #jp endif
 Iteration_stmt->for #for_loop ( Expression ; Expression ; Expression ) Statement
-Return_stmt->return Return_stmt_prime #return
+Return_stmt->return Return_stmt_prime #func_return
 Return_stmt_prime->;
 Return_stmt_prime->Expression #set_return_value ;
 Expression->Simple_expression_zegond
@@ -70,16 +70,16 @@ Signed_factor_zegond->Factor_zegond
 Factor->( Expression )
 Factor->#pid ID Var_call_prime
 Factor->#push NUM
-Var_call_prime->#func_id ( Args ) #call
+Var_call_prime->#func_name ( Args ) #func_call
 Var_call_prime->Var_prime
 Var_prime->[ Expression ] #get_arr
 Var_prime->
-Factor_prime->#func_id ( Args ) #call
+Factor_prime->#func_id ( Args ) #func_call
 Factor_prime->
 Factor_zegond-> ( Expression )
 Factor_zegond->#push NUM
 Args-> Arg_list
 Args->
-Arg_list->Expression #arg Arg_list_prime 
-Arg_list_prime->, Expression #arg Arg_list_prime
+Arg_list->Expression #func_arg Arg_list_prime 
+Arg_list_prime->, Expression #func_arg Arg_list_prime
 Arg_list_prime->

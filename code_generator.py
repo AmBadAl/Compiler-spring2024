@@ -122,10 +122,24 @@ class CodeGenerator:
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i}, )', i=self.stack[-1])
         self.pop(2)
 
-    def pid(self):
-        #todo
-        return
+    def pid(self, lookahead):
+        row = self.ST.get_by_name(lookahead)
+        if row is None:
+            #todo: handle semantic errors
+            return
+        else:
+            self.push(row['addr'])
         
+    def relop(self):
+        a, relop, b = self.stack[-3:]
+        #todo: check type of a and b for semantic errors
+        t = self.memory.get_tmp()
+        if (relop == '=='):
+            self.insert_code(f'(EQ, {a}, {b}, {t})')
+        else:
+            self.insert_code(f'(LT, {a}, {b}, {t})')
+        self.pop(3)
+        self.push(t)
 
     def add_sub(self):
         a, op, b = self.stack[-3:]

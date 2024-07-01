@@ -20,6 +20,10 @@ class SymbolTable:
         self.mm = memory_manager
         self.table = []
     
+    def _initialize(self):
+        self.add_function('output', 'void', {'return_addr': 50, 'code_addr': 1})
+        self.add_variable('a', 'int', {'kind': 'param'})
+
     def add_variable(self, lexptr, type, attributes):
         addr = self.mm.get_addr()
         self.table.append({
@@ -28,7 +32,10 @@ class SymbolTable:
             'type': type,
             'attr': attributes
         })
-        count = attributes['count']
+        if 'count' in attributes.keys():
+            count = attributes['count']
+        else:
+            count = 1
         self.mm.increase(count)
 
     def add_function(self, lexptr, type, attributes):
@@ -62,10 +69,14 @@ class CodeGenerator:
         self.stack = []
         self.PB = []
         self.i = 0
-
         self.curr_param_count = 0
         self.curr_funcs_name = []
+        self._initialize()
 
+    def _initialize(self):
+        self.insert_code('(JP, 3, , )')
+        self.insert_code('(PRINT, 104, , )')
+        self.insert_code('(JP, @50, , )')
 
     def insert_code(self, code, i=None):
         if (i is None):
@@ -84,7 +95,8 @@ class CodeGenerator:
 
     def save(self):
         self.push(self.i)
-        self.i += 1
+        self.insert_code('')
+        # self.i += 1
 
     def jpf_save(self):
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i + 1}, )', i=self.stack[-1])
@@ -152,13 +164,20 @@ class CodeGenerator:
     def func_start(self, lookahead):
         # todo: if func==main?!
         self.ST.add_function(self.stack[-1], self.stack[-2], attributes=None)
+        func_name = self.stack[-1]
         self.pop(2)
+        if func_name != 'main':
+            self.save()
 
     def param_end(self, lookahead):
         attr = {'kind': 'param'}
         self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
+        func_name = self.stack[-1]
         self.pop(2)
         self.curr_param_count += 1
+        if func_name != 'main':
+            self.insert_code(f'(JMP, {self.i}, , )', self.stack[-1])
+            self.pop()
 
     def params_end(self, lookahead):
         attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
@@ -199,6 +218,7 @@ class CodeGenerator:
         return_addr = func['attr']['return_addr']
         self.insert_code(f'(ASSIGN, #{self.i+2}, {return_addr})')
         self.insert_code(f'(JP, {func_addr}, , )')
+        self.curr_param_count = 0
 
         if func['type'] != 'void':
             # todo: where will we use t??

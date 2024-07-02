@@ -272,6 +272,10 @@ class CodeGenerator:
         self.curr_loops_name.pop()
 
     def break_loop(self, lookahead):
+        # check semantic error: break
+        if len(self.curr_loops_name) == 0:
+            self.semantic_checker.break_statement(lineno)
+        
         t = self.curr_loops_name[-1]
         self.insert_code(f'(JP, @{t}, , )')
     
@@ -335,16 +339,36 @@ class CodeGenerator:
         self.insert_code(f'(JP, @{return_addr}, , )')
 
 
+    def _is_var_array(self, var):
+        if 'count' in var['attr'].keys():
+            return True
+        return False
+
     def func_arg(self, lookahead):
         i = self.ST.get_index(self.curr_funcs_name[-1])
         self.curr_param_count += 1
-        addr = self.ST.table[i+self.curr_param_count]['addr']
+        func_arg = self.ST.table[i+self.curr_param_count]
+
+        # check semantic error: argument type
+        invoke_arg = self.ST.get_by_addr(self.stack[-1])
+        func_arg_type = 'array' if self._is_var_array(func_arg) else 'int'
+        invoke_arg_type = 'array' if self._is_var_array(invoke_arg) else 'int'
+        if func_arg_type != invoke_arg_type:
+            self.semantic_checker.param_type_matching(
+                lineno, self.curr_param_count, self.curr_funcs_name[-1],func_arg_type, invoke_arg_type)
+
+        addr = func_arg['addr']
         self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
         self.pop()
     
 
     def func_call(self, lookahead):
         func = self.ST.get_by_name(self.curr_funcs_name[-1])
+
+        # check semantic error: num of arguments
+        if self.curr_param_count != func['attr']['param_count']:
+            self.semantic_checker.param_num_matching(lineno, func['lexptr'])
+
         func_addr = func['attr']['code_addr']
         return_addr = func['attr']['return_addr']
         self.insert_code(f'(ASSIGN, #{self.i+2}, {return_addr})')

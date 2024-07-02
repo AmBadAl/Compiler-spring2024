@@ -359,27 +359,3 @@ class CodeGenerator:
         
         semantic_func(lookahead)
         return True
-        if (action == 'push'):
-            self.push(lookahead)
-        elif (action == 'pop'):
-            self.pop()
-        elif (action == 'save'):
-            self.save()
-        elif (action == 'jpf_save'):
-            self.jpf_save()
-        elif (action == 'jp'):
-            self.jp()
-        elif (action == 'jpf'):
-            self.jpf()
-        elif (action == 'add_sub'):
-            self.add_sub()
-        elif (action == 'mult'):
-            self.mult()
-        elif (action == 'pid'):
-            self.pid()
-        elif (action == 'assign'):
-            self.assign()
-        elif (action == 'for_loop'):
-            self.for_loop()
-        elif (action == 'break_loop'):
-            self.break_loop()

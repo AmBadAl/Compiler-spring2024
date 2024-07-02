@@ -98,6 +98,16 @@ class SymbolTable:
             # elif (flag and row['lexptr'] == name):
             #     return i
         return None
+    
+    def get_type(self, addr):
+        if type(addr) == str and addr.startswith('#'):
+            return 'int'
+        row = self.get_by_addr(addr)
+        if row is None:
+            return 'int'
+        else:
+            return row['type']
+        
 
 
 class SemanticChecker:
@@ -196,7 +206,9 @@ class CodeGenerator:
         
     def relop(self, lookahead, lineno):
         a, relop, b = self.stack[-3:]
-        #todo: check type of a and b for semantic errors
+        type_a, type_b = self.ST.get_type(a), self.ST.get_type(b)
+        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
+            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
         t = self.memory.get_tmp()
         if (relop == '=='):
             self.insert_code(f'(EQ, {a}, {b}, {t})')
@@ -207,7 +219,9 @@ class CodeGenerator:
 
     def add_sub(self, lookahead, lineno):
         a, op, b = self.stack[-3:]
-        #todo: check type of a and b for semantic errors
+        type_a, type_b = self.ST.get_type(a), self.ST.get_type(b)
+        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
+            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
         t = self.memory.get_tmp()
         if (op == '+'):
             self.insert_code(f'(ADD, {a}, {b}, {t})')
@@ -218,7 +232,9 @@ class CodeGenerator:
 
     def mult(self, lookahead, lineno):
         a, b = self.stack[-2:]
-        #todo: check type of a and b for semantic errors
+        type_a, type_b = self.ST.get_type(a), self.ST.get_type(b)
+        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
+            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
         t = self.memory.get_tmp()
         self.insert_code(f'(MULT, {a}, {b}, {t})')
         self.pop(2)
@@ -226,7 +242,9 @@ class CodeGenerator:
 
     def assign(self, lookahead, lineno):
         b, a = self.stack[-2:]
-        #todo: check type of a and b for semantic errors
+        type_b, type_a = self.ST.get_type(b), self.ST.get_type(a)
+        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
+            self.semantic_checker.type_mismatch(lineno, type_b, type_a)
         self.insert_code(f'(ASSIGN, {a}, {b})')
         self.pop(1)
     

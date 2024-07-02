@@ -2,12 +2,11 @@ from cparser import Parser
 
 FOLLOWS_LIST = './grammar_info/follows_list.txt'
 PREDICTS_LIST = './grammar_info/predicts_list.txt'
-#GRAMMAR = './grammar_info/grammar_new.txt'
-GRAMMAR = './grammar_info/action_symbols.txt'
+GRAMMAR = './grammar_info/grammar_semantic.txt'
 
 
 if __name__ == '__main__':
-    addr = './Testcases/R1/input.txt'
+    addr = './input.txt'
     parser = Parser(addr, FOLLOWS_LIST, PREDICTS_LIST, GRAMMAR)
 
     parser.parse()

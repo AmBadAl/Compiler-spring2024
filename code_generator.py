@@ -26,6 +26,8 @@ class SymbolTable:
 
     def add_variable(self, lexptr, type, attributes):
         addr = self.mm.get_addr()
+        if attributes is None:
+            attributes = dict()
         self.table.append({
             'lexptr': lexptr,
             'addr': addr,
@@ -52,36 +54,42 @@ class SymbolTable:
         self.mm.increase(1)
 
     def get_by_addr(self, addr):
-        flag = True
+        # flag = True
         for row in self.table[::-1]:
-            if row['scope'] == 0:
-                flag = False
-                if row['addr'] == addr:
-                    return row
-            elif (flag and row['addr'] == addr):
+            if row['addr'] == addr:
                 return row
+            # if row['scope'] == 0:
+            #     flag = False
+            #     if row['addr'] == addr:
+            #         return row
+            # elif (flag and row['addr'] == addr):
+            #     return row
         return None
 
     def get_by_name(self, name):
-        flag = True
+        # flag = True
         for row in self.table[::-1]:
-            if row['scope'] == 0:
-                flag = False
-                if row['lexptr'] == name:
-                    return row
-            elif (flag and row['lexptr'] == name):
+            if row['lexptr'] == name:
                 return row
+            # if row['scope'] == 0:
+            #     flag = False
+            #     if row['lexptr'] == name:
+            #         return row
+            # elif (flag and row['lexptr'] == name):
+            #     return row
         return None
 
     def get_index(self, name):
-        flag = True
+        # flag = True
         for i, row in zip(range(len(self.table) - 1, -1, -1), self.table[::-1]):
-            if row['scope'] == 0:
-                flag = False
-                if row['lexptr'] == name:
-                    return i
-            elif (flag and row['lexptr'] == name):
+            if row['lexptr'] == name:
                 return i
+            # if row['scope'] == 0:
+            #     flag = False
+            #     if row['lexptr'] == name:
+            #         return i
+            # elif (flag and row['lexptr'] == name):
+            #     return i
         return None
 
 
@@ -240,12 +248,8 @@ class CodeGenerator:
     def param_end(self, lookahead):
         attr = {'kind': 'param'}
         self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
-        func_name = self.stack[-1]
         self.pop(2)
         self.curr_param_count += 1
-        if func_name != 'main':
-            self.insert_code(f'(JMP, {self.i}, , )', self.stack[-1])
-            self.pop()
 
     def params_end(self, lookahead):
         attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
@@ -258,6 +262,10 @@ class CodeGenerator:
         # todo: if func==main?!
         return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
         self.insert_code(f'(JP, @{return_addr}, , )')
+        func_name = self.curr_funcs_name[-1]
+        if func_name != 'main':
+            self.insert_code(f'(JMP, {self.i}, , )', self.stack[-1])
+            self.pop()
         self.curr_funcs_name.pop()
 
 

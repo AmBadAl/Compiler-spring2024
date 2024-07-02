@@ -82,7 +82,7 @@ class Parser():
                                 result = result and self.PRD_functions[elem]()
                                 self.current_node = old_node
                             elif elem.startswith("#"):
-                                self.code_generator.code_gen(elem[1:], self.look_ahead)
+                                result = result and self.code_generator.code_gen(elem[1:], self.look_ahead)
                             else:
                                 new_node = Node(self.token, parent=self.current_node)
                                 old_node = self.current_node

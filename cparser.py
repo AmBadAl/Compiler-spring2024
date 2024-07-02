@@ -165,8 +165,11 @@ class Parser():
 
     def save_output(self, addr):
         with open(addr, 'w', encoding='utf-8') as f:
-            for line, code in enumerate(self.code_generator.PB):
-                f.write(f'{line}\t{code}\n')
+            if (len(self.code_generator.semantic_checker.errors) == 0):
+                for line, code in enumerate(self.code_generator.PB):
+                    f.write(f'{line}\t{code}\n')
+            else:
+                f.write("The output code has not been generated.")
 
 
 if __name__ == '__main__':

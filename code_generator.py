@@ -328,6 +328,16 @@ class CodeGenerator:
             self.curr_param_count += 1
         self.pop(2)
 
+    def param_arr_end(self, lookahead, lineno):
+        param_type = self.stack[-2]
+        if param_type == 'void':
+            self.semantic_checker.void_type(lineno=lineno, id=self.stack[-1])
+        else:
+            attr = {'kind': 'param', 'scope': self.scope, 'count': '#10'}
+            self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
+            self.curr_param_count += 1
+        self.pop(2)
+
     def params_end(self, lookahead, lineno):
         print(self.curr_funcs_name[-1])
         func_stat = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)

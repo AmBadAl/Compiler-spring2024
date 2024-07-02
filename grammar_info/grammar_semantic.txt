@@ -15,7 +15,7 @@ Params->void
 Param_list->, Param Param_list
 Param_list->
 Param->Declaration_initial Param_prime
-Param_prime->#param_end [ ] 
+Param_prime->#param_arr_end [ ] 
 Param_prime->#param_end
 Compound_stmt->{ Declaration_list Statement_list }
 Statement_list->Statement Statement_list

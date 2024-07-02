@@ -74,7 +74,7 @@ Var_call_prime->#func_name ( Args ) #func_call
 Var_call_prime->Var_prime
 Var_prime->[ Expression ] #get_arr
 Var_prime->
-Factor_prime->#func_id ( Args ) #func_call
+Factor_prime->#func_name ( Args ) #func_call
 Factor_prime->
 Factor_zegond-> ( Expression )
 Factor_zegond->#push NUM

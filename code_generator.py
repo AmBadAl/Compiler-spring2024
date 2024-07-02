@@ -40,6 +40,8 @@ class SymbolTable:
 
     def add_function(self, lexptr, type, attributes):
         addr = self.mm.get_addr()
+        if attributes is None:
+            attributes = dict()
         attributes['return_addr'] = self.mm.get_tmp()
         self.table.append({
             'lexptr': lexptr,
@@ -65,9 +67,9 @@ class SymbolTable:
         for row in self.table[::-1]:
             if row['scope'] == 0:
                 flag = False
-                if row['lexeme'] == name:
+                if row['lexptr'] == name:
                     return row
-            elif (flag and row['lexeme'] == name):
+            elif (flag and row['lexptr'] == name):
                 return row
         return None
 
@@ -76,9 +78,9 @@ class SymbolTable:
         for i, row in zip(range(len(self.table) - 1, -1, -1), self.table[::-1]):
             if row['scope'] == 0:
                 flag = False
-                if row['lexeme'] == name:
+                if row['lexptr'] == name:
                     return i
-            elif (flag and row['lexeme'] == name):
+            elif (flag and row['lexptr'] == name):
                 return i
         return None
 
@@ -118,7 +120,7 @@ class CodeGenerator:
 
     def save(self, lookahead):
         self.push(self.i)
-        self.insert_code('')
+        self.insert_code('(, , , )')
         # self.i += 1
 
     def jpf_save(self, lookahead):

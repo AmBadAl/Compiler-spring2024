@@ -1,6 +1,6 @@
 from anytree import Node, RenderTree
 from scanner import Scanner
-
+from code_generator import CodeGenerator
 
 class Parser():
     def __init__(self, input_addr, follows_path, predicts_path, grammar_path):
@@ -15,6 +15,8 @@ class Parser():
         self.syntax_errors = []
         self.root = Node('Program')
         self.current_node = self.root
+
+        self.code_generator = CodeGenerator()
 
     def _get_scanner(self, input_addr):
         return Scanner(input_addr)
@@ -79,6 +81,8 @@ class Parser():
                                 self.current_node = new_node
                                 result = result and self.PRD_functions[elem]()
                                 self.current_node = old_node
+                            elif elem.startswith("#"):
+                                self.code_generator.code_gen(elem[1:], self.look_ahead)
                             else:
                                 new_node = Node(self.token, parent=self.current_node)
                                 old_node = self.current_node
@@ -157,6 +161,11 @@ class Parser():
             else:
                 for error in self.syntax_errors:
                     f.write(f'#{error[0]} : syntax error, {error[1]}\n')
+
+    def save_output(self, addr):
+        with open(addr, 'w', encoding='utf-8') as f:
+            for line, code in enumerate(self.code_generator.PB):
+                f.write(f'{line}\t{code}\n')
 
 
 if __name__ == '__main__':

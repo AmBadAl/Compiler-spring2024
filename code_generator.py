@@ -1,3 +1,7 @@
+OUTPUT_RETURN_ADDR = 50
+OUTPUT_CODE_ADDR = 1
+
+
 class Memory:
     def __init__(self):
         self.head = 100
@@ -19,9 +23,12 @@ class SymbolTable:
     def __init__(self, memory_manager):
         self.mm = memory_manager
         self.table = []
+        self._initialize()
     
     def _initialize(self):
-        self.add_function('output', 'void', {'return_addr': 50, 'code_addr': 1})
+        self.add_function('output', 'void', None)
+        self.table[0]['attr']['code_addr'] = OUTPUT_CODE_ADDR
+        self.table[0]['attr']['return_addr'] = OUTPUT_RETURN_ADDR
         self.add_variable('a', 'int', {'kind': 'param'})
 
     def add_variable(self, lexptr, type, attributes):
@@ -35,7 +42,7 @@ class SymbolTable:
             'attr': attributes
         })
         if 'count' in attributes.keys():
-            count = attributes['count']
+            count = int(attributes['count'][1:]) + 1
         else:
             count = 1
         self.mm.increase(count)
@@ -109,7 +116,7 @@ class CodeGenerator:
     def _initialize(self):
         self.insert_code('(JP, 3, , )')
         self.insert_code('(PRINT, 104, , )')
-        self.insert_code('(JP, @50, , )')
+        self.insert_code(f'(JP, @{OUTPUT_RETURN_ADDR}, , )')
 
     def insert_code(self, code, i=None):
         if (i is None):
@@ -120,9 +127,16 @@ class CodeGenerator:
 
     def push(self, value):
         # todo: different push for num and other
-        self.stack.append(value)
+        if type(value) == int:
+            self.stack.append(value)
+        elif value.isnumeric():
+            self.stack.append(f'#{value}')
+        else:
+            self.stack.append(value)
 
     def pop(self, n=1):
+        if not str(n).isnumeric():
+            n = 1
         for i in range(n):
             self.stack.pop()
 
@@ -138,7 +152,7 @@ class CodeGenerator:
         self.insert_code('')
 
     def jp(self, lookahead):
-        self.insert_code(f'(JPF, {self.i}, , )', i=self.stack[-1])
+        self.insert_code(f'(JP, {self.i}, , )', i=self.stack[-1])
         self.pop(1)
 
     def jpf(self, lookahead):
@@ -192,10 +206,10 @@ class CodeGenerator:
     def get_arr(self, lookahead):
         t1 = self.memory.get_tmp()
         #todo: check t1 type
-        self.insert_code(f'(MULT, {self.stack[-1]}, #4, {t1})')
+        self.insert_code(f'(MULT, #4, {self.stack[-1]}, {t1})')
         self.pop()
         t2 = self.memory.get_tmp()
-        self.insert_code(f'(ADD, {t1}, {self.stack[-1], {t2}})')
+        self.insert_code(f'(ADD, {self.stack[-1]}, {t1}, {t2})')
         self.pop()
         self.push(f'@{t2}')
 
@@ -212,13 +226,23 @@ class CodeGenerator:
     def for_jpf(self, lookahead):
         self.push(self.i)
         self.insert_code('')
+        self.push(self.i)
+        self.insert_code('')
     
-    def for_jmp(self, lookahead):
-        t, for_begin, for_label, rel_op, for_jpf = self.stack[-5:]
+    def for_jp_loop(self, lookahead):
+        for_label = self.stack[-4]
         self.insert_code(f'(JP, {for_label}, , )')
+
+    def for_statement(self, lookahead):
+        for_jpf = self.stack[-1]
+        self.insert_code(f'(JP, {self.i}, , )', i=for_jpf)
+
+    def for_jp(self, lookahead):
+        t, for_begin, for_label, rel_op, for_jpf, for_step = self.stack[-6:]
+        self.insert_code(f'(JP, {for_step+1}, , )')
         self.insert_code(f'(ASSIGN, #{self.i}, {t}, )', i=for_begin)
         self.insert_code(f'(JPF, {rel_op}, {self.i}, )', i=for_jpf)
-        self.pop(5)
+        self.pop(6)
         self.curr_loops_name.pop()
 
     def break_loop(self, lookahead):
@@ -226,10 +250,13 @@ class CodeGenerator:
         self.insert_code(f'(JP, @{t}, , )')
     
     def var_end(self, lookahead):
-        if self.stack[-1].isnumeric():
+        if self.stack[-1].startswith('#'):
             #array
             attr = {'count': self.stack[-1]}
-            self.ST.add_variable(self.stack[-2], self.stack[-1], attributes=attr)
+            self.ST.add_variable(self.stack[-2], self.stack[-3], attributes=attr)
+            arr = self.ST.table[-1]['addr']
+            first_elem_addr = arr + 4
+            self.insert_code(f"(ASSIGN, #{first_elem_addr}, {arr}, )")
             self.pop(3)
         else:
             #simple var
@@ -240,6 +267,7 @@ class CodeGenerator:
         # todo: if func==main?!
         self.ST.add_function(self.stack[-1], self.stack[-2], attributes=None)
         func_name = self.stack[-1]
+        self.curr_funcs_name.append(func_name)
         self.pop(2)
         if func_name != 'main':
             self.push(self.i)
@@ -252,19 +280,20 @@ class CodeGenerator:
         self.curr_param_count += 1
 
     def params_end(self, lookahead):
-        attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
+        # attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
         func_stat = self.ST.get_by_name(self.curr_funcs_name[-1])
-        func_stat['attr'] = attr
+        func_stat['attr']['code_addr'] = self.i
+        func_stat['attr']['param_count'] = self.curr_param_count
         self.curr_param_count = 0
 
 
     def func_end(self, lookahead):
         # todo: if func==main?!
         return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
-        self.insert_code(f'(JP, @{return_addr}, , )')
         func_name = self.curr_funcs_name[-1]
         if func_name != 'main':
-            self.insert_code(f'(JMP, {self.i}, , )', self.stack[-1])
+            self.insert_code(f'(JP, @{return_addr}, , )')
+            self.insert_code(f'(JP, {self.i}, , )', self.stack[-1])
             self.pop()
         self.curr_funcs_name.pop()
 
@@ -283,7 +312,7 @@ class CodeGenerator:
     def func_arg(self, lookahead):
         i = self.ST.get_index(self.curr_funcs_name[-1])
         self.curr_param_count += 1
-        addr = self.ST[i+self.curr_param_count]['addr']
+        addr = self.ST.table[i+self.curr_param_count]['addr']
         self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
         self.pop()
     
@@ -296,11 +325,11 @@ class CodeGenerator:
         self.insert_code(f'(JP, {func_addr}, , )')
         self.curr_param_count = 0
 
+        t = self.memory.get_tmp()
         if func['type'] != 'void':
             # todo: where will we use t??
-            t = self.memory.get_tmp()
             self.insert_code(f"(ASSIGN, {func['addr']}, {t}, )")
-            self.stack.push(t)
+        self.push(t)
         self.curr_funcs_name.pop()
 
 
@@ -310,7 +339,17 @@ class CodeGenerator:
         self.pop()
 
 
-
+    def signed_fac(self, lookahead):
+        sign, factor = self.stack[-2:]
+        self.pop(2)
+        if sign == '-' and str(factor).startswith('#'):
+            t = self.memory.get_tmp()
+            self.insert_code(f'(SUB, #0, {factor}, {t})')
+            factor = t
+        elif sign == '-':
+            self.insert_code(f'(SUB, #0, {factor}, {factor})')
+        self.push(factor)
+        
 
     def code_gen(self, action, lookahead=None):
         semantic_func = getattr(self, action)

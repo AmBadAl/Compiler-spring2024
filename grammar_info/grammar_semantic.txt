@@ -5,8 +5,8 @@ Declaration->Declaration_initial Declaration_prime
 Declaration_initial->#push Type_specifier #push ID
 Declaration_prime->Fun_declaration_prime
 Declaration_prime->Var_declaration_prime
-Var_declaration_prime->#var_end;
-Var_declaration_prime->[ #push NUM ] #var_end;
+Var_declaration_prime->#var_end ;
+Var_declaration_prime->[ #push NUM ] #var_end ;
 Fun_declaration_prime->#func_start ( Params ) #params_end Compound_stmt #func_end
 Type_specifier->int
 Type_specifier->void
@@ -31,7 +31,7 @@ Expression_stmt->;
 Selection_stmt->if ( Expression ) #save Statement Else_stmt
 Else_stmt->endif #jpf
 Else_stmt->else #jpf_save Statement #jp endif
-Iteration_stmt->for #for_loop ( Expression ; #for_label Expression #for_jpf ; Expression ) Statement #for_jmp
+Iteration_stmt->for #for_loop ( Expression #pop ; #for_label Expression #for_jpf ; Expression #pop #for_jp_loop ) #for_statement Statement #for_jp
 Return_stmt->return Return_stmt_prime #func_return
 Return_stmt_prime->;
 Return_stmt_prime->Expression #set_return_value ;
@@ -60,12 +60,12 @@ Term_prime->Signed_factor_prime G
 Term_zegond->Signed_factor_zegond G
 G->* Signed_factor #mult G
 G->
-Signed_factor->#push + Factor
-Signed_factor->#push - Factor
+Signed_factor->#push + Factor #signed_fac
+Signed_factor->#push - Factor #signed_fac
 Signed_factor->Factor
 Signed_factor_prime->Factor_prime
-Signed_factor_zegond->#push + Factor
-Signed_factor_zegond->#push - Factor
+Signed_factor_zegond->#push + Factor #signed_fac
+Signed_factor_zegond->#push - Factor #signed_fac
 Signed_factor_zegond->Factor_zegond
 Factor->( Expression )
 Factor->#pid ID Var_call_prime

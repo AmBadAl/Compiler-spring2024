@@ -134,6 +134,7 @@ class CodeGenerator:
         self.stack = []
         self.PB = []
         self.i = 0
+        self.scope = 0
         self.curr_param_count = 0
         self.curr_funcs_name = []
         self.curr_loops_name = []
@@ -286,7 +287,7 @@ class CodeGenerator:
             if arr_type == 'void':
                 self.semantic_checker.void_type(lineno=lineno, id=self.stack[-2])
             else:
-                attr = {'count': self.stack[-1]}
+                attr = {'count': self.stack[-1], 'scope': self.scope}
                 self.ST.add_variable(self.stack[-2], self.stack[-3], attributes=attr)
                 arr = self.ST.table[-1]['addr']
                 first_elem_addr = arr + 4
@@ -298,12 +299,15 @@ class CodeGenerator:
             if var_type == 'void':
                 self.semantic_checker.void_type(lineno=lineno, id=self.stack[-1])
             else:
+                attr = {'scope': self.scope}
                 self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=None)
             self.pop(2)
 
     def func_start(self, lookahead, lineno):
         # todo: if func==main?!
+        attr = {'scope': self.scope}
         self.ST.add_function(self.stack[-1], self.stack[-2], attributes=None)
+        self.scope += 1
         func_name = self.stack[-1]
         self.curr_funcs_name.append(func_name)
         self.pop(2)
@@ -331,6 +335,7 @@ class CodeGenerator:
 
     def func_end(self, lookahead, lineno):
         # todo: if func==main?!
+        self.scope -= 1
         return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
         func_name = self.curr_funcs_name[-1]
         if func_name != 'main':

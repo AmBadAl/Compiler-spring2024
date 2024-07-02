@@ -169,7 +169,14 @@ class Parser():
                 for line, code in enumerate(self.code_generator.PB):
                     f.write(f'{line}\t{code}\n')
             else:
+                self._save_semantic_errors()
                 f.write("The output code has not been generated.")
+    
+    def _save_semantic_errors(self):
+        with open('./semantic_errors.txt', 'w', encoding='utf-8') as f:
+            for line, code in enumerate(self.code_generator.semantic_checker.errors):
+                f.write(f'{code}\n')
+
 
 
 if __name__ == '__main__':

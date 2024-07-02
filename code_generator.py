@@ -29,7 +29,9 @@ class SymbolTable:
         self.add_function('output', 'void', None)
         self.table[0]['attr']['code_addr'] = OUTPUT_CODE_ADDR
         self.table[0]['attr']['return_addr'] = OUTPUT_RETURN_ADDR
-        self.add_variable('a', 'int', {'kind': 'param'})
+        self.table[0]['attr']['param_count'] = 1
+        self.table[0]['attr']['scope'] = 0
+        self.add_variable('a', 'int', {'kind': 'param', 'scope': 1})
 
     def add_variable(self, lexptr, type, attributes):
         addr = self.mm.get_addr()
@@ -61,52 +63,36 @@ class SymbolTable:
         self.mm.increase(1)
 
     def get_by_addr(self, addr):
-        # flag = True
         for row in self.table[::-1]:
             if row['addr'] == addr:
                 return row
-            # if row['scope'] == 0:
-            #     flag = False
-            #     if row['addr'] == addr:
-            #         return row
-            # elif (flag and row['addr'] == addr):
-            #     return row
         return None
 
-    def get_by_name(self, name):
-        # flag = True
+    def get_by_name(self, name, scope):
         for row in self.table[::-1]:
+            if row['attr']['scope'] > scope:
+                continue
             if row['lexptr'] == name:
                 return row
-            # if row['scope'] == 0:
-            #     flag = False
-            #     if row['lexptr'] == name:
-            #         return row
-            # elif (flag and row['lexptr'] == name):
-            #     return row
         return None
 
-    def get_index(self, name):
-        # flag = True
+    def get_index(self, name, scope):
         for i, row in zip(range(len(self.table) - 1, -1, -1), self.table[::-1]):
+            if row['attr']['scope'] >= scope:
+                continue
             if row['lexptr'] == name:
                 return i
-            # if row['scope'] == 0:
-            #     flag = False
-            #     if row['lexptr'] == name:
-            #         return i
-            # elif (flag and row['lexptr'] == name):
-            #     return i
         return None
     
-    def get_type(self, addr):
+    def get_type(self, addr, scope):
         if type(addr) == str and addr.startswith('#'):
             return 'int'
         row = self.get_by_addr(addr)
         if row is None:
             return 'int'
-        else:
-            return row['type']
+        if 'count' in row['attr'].keys():
+            return 'array'
+        return row['type']
         
 
 
@@ -116,22 +102,22 @@ class SemanticChecker:
         self.errors = []
 
     def scoping(self, lineno, id):
-        self.errors.append(f'#{lineno}: Semantic Error! {id} is not defined.')
+        self.errors.append(f"#{lineno} : Semantic Error! '{id}' is not defined.")
 
     def void_type(self, lineno, id):
-        self.errors.append(f'#{lineno}: Semantic Error! Illegal type of void for {id}.')
+        self.errors.append(f"#{lineno} : Semantic Error! Illegal type of void for '{id}'.")
     
     def param_num_matching(self, lineno, id):
-        self.errors.append(f'#{lineno}: Semantic Error! Mismatch in numbers of arguments of {id}.')
+        self.errors.append(f"#{lineno} : Semantic Error! Mismatch in numbers of arguments of '{id}'.")
     
     def param_type_matching(self, lineno, N, id, type1, type2):
-        self.errors.append(f'#{lineno}: Semantic Error! Mismatch in type of argument {N} for {id}. Expected {type1} but got {type2} instead.')
+        self.errors.append(f"#{lineno} : Semantic Error! Mismatch in type of argument {N} of '{id}'. Expected '{type1}' but got '{type2}' instead.")
 
     def type_mismatch(self, lineno, type1, type2):
-        self.errors.append(f'#{lineno}: Semantic Error! Type mismatch in operands, Got {type2} instead of {type1}.')
+        self.errors.append(f"#{lineno} : Semantic Error! Type mismatch in operands, Got {type2} instead of {type1}.")
     
     def break_statement(self, lineno):
-        self.errors.append(f'#{lineno}: Semantic Error! No \'while\' found for \'break\'.')
+        self.errors.append(f"#{lineno} : Semantic Error! No \'for\' found for \'break\'.")
     
 
 
@@ -162,8 +148,7 @@ class CodeGenerator:
         else:
             self.PB[i] = code
 
-    def push(self, value):
-        # todo: different push for num and other
+    def push(self, value, lineno=0):
         if type(value) == int:
             self.stack.append(value)
         elif value.isnumeric():
@@ -171,7 +156,7 @@ class CodeGenerator:
         else:
             self.stack.append(value)
 
-    def pop(self, n=1):
+    def pop(self, n=1, lineno=0):
         if not str(n).isnumeric():
             n = 1
         for i in range(n):
@@ -179,8 +164,7 @@ class CodeGenerator:
 
     def save(self, lookahead, lineno):
         self.push(self.i)
-        self.insert_code('(, , , )')
-        # self.i += 1
+        self.insert_code('')
 
     def jpf_save(self, lookahead, lineno):
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i + 1}, )', i=self.stack[-1])
@@ -197,18 +181,18 @@ class CodeGenerator:
         self.pop(2)
 
     def pid(self, lookahead, lineno):
-        row = self.ST.get_by_name(lookahead)
+        row = self.ST.get_by_name(lookahead, self.scope)
         if row is None:
-            #todo: handle semantic errors
-            return
+            self.semantic_checker.scoping(lineno, lookahead)
+            self.push(self.memory.get_tmp())
         else:
             self.push(row['addr'])
         
     def relop(self, lookahead, lineno):
         a, relop, b = self.stack[-3:]
-        type_a, type_b = self.ST.get_type(a), self.ST.get_type(b)
-        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
-            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
+        type_a, type_b = self.ST.get_type(a, self.scope), self.ST.get_type(b, self.scope)
+        if (type_a != type_b):
+            self.semantic_checker.type_mismatch(lineno, type_b, type_a)
         t = self.memory.get_tmp()
         if (relop == '=='):
             self.insert_code(f'(EQ, {a}, {b}, {t})')
@@ -219,9 +203,9 @@ class CodeGenerator:
 
     def add_sub(self, lookahead, lineno):
         a, op, b = self.stack[-3:]
-        type_a, type_b = self.ST.get_type(a), self.ST.get_type(b)
-        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
-            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
+        type_a, type_b = self.ST.get_type(a, self.scope), self.ST.get_type(b, self.scope)
+        if (type_a != type_b):
+            self.semantic_checker.type_mismatch(lineno, type_b, type_a)
         t = self.memory.get_tmp()
         if (op == '+'):
             self.insert_code(f'(ADD, {a}, {b}, {t})')
@@ -232,9 +216,9 @@ class CodeGenerator:
 
     def mult(self, lookahead, lineno):
         a, b = self.stack[-2:]
-        type_a, type_b = self.ST.get_type(a), self.ST.get_type(b)
-        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
-            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
+        type_a, type_b = self.ST.get_type(a, self.scope), self.ST.get_type(b, self.scope)
+        if (type_a != type_b):
+            self.semantic_checker.type_mismatch(lineno, type_b, type_a)
         t = self.memory.get_tmp()
         self.insert_code(f'(MULT, {a}, {b}, {t})')
         self.pop(2)
@@ -242,15 +226,14 @@ class CodeGenerator:
 
     def assign(self, lookahead, lineno):
         b, a = self.stack[-2:]
-        type_b, type_a = self.ST.get_type(b), self.ST.get_type(a)
-        if (type_a != type_b or self._is_var_array(a) != self._is_var_array(b)):
-            self.semantic_checker.type_mismatch(lineno, type_b, type_a)
+        type_b, type_a = self.ST.get_type(b, self.scope), self.ST.get_type(a, self.scope)
+        if (type_a != type_b):
+            self.semantic_checker.type_mismatch(lineno, type_a, type_b)
         self.insert_code(f'(ASSIGN, {a}, {b})')
         self.pop(1)
     
     def get_arr(self, lookahead, lineno):
         t1 = self.memory.get_tmp()
-        #todo: check t1 type
         self.insert_code(f'(MULT, #4, {self.stack[-1]}, {t1})')
         self.pop()
         t2 = self.memory.get_tmp()
@@ -279,6 +262,7 @@ class CodeGenerator:
         self.insert_code(f'(JP, {for_label}, , )')
 
     def for_statement(self, lookahead, lineno):
+        self.scope += 1
         for_jpf = self.stack[-1]
         self.insert_code(f'(JP, {self.i}, , )', i=for_jpf)
 
@@ -289,12 +273,14 @@ class CodeGenerator:
         self.insert_code(f'(JPF, {rel_op}, {self.i}, )', i=for_jpf)
         self.pop(6)
         self.curr_loops_name.pop()
+        self.scope -= 1
 
     def break_loop(self, lookahead, lineno):
         # check semantic error: break
         if len(self.curr_loops_name) == 0:
             self.semantic_checker.break_statement(lineno)
-        
+            self.curr_loops_name.append(self.memory.get_tmp())
+
         t = self.curr_loops_name[-1]
         self.insert_code(f'(JP, @{t}, , )')
     
@@ -318,13 +304,12 @@ class CodeGenerator:
                 self.semantic_checker.void_type(lineno=lineno, id=self.stack[-1])
             else:
                 attr = {'scope': self.scope}
-                self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=None)
+                self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
             self.pop(2)
 
     def func_start(self, lookahead, lineno):
-        # todo: if func==main?!
         attr = {'scope': self.scope}
-        self.ST.add_function(self.stack[-1], self.stack[-2], attributes=None)
+        self.ST.add_function(self.stack[-1], self.stack[-2], attributes=attr)
         self.scope += 1
         func_name = self.stack[-1]
         self.curr_funcs_name.append(func_name)
@@ -338,23 +323,22 @@ class CodeGenerator:
         if param_type == 'void':
             self.semantic_checker.void_type(lineno=lineno, id=self.stack[-1])
         else:
-            attr = {'kind': 'param'}
+            attr = {'kind': 'param', 'scope': self.scope}
             self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
             self.curr_param_count += 1
         self.pop(2)
 
     def params_end(self, lookahead, lineno):
-        # attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
-        func_stat = self.ST.get_by_name(self.curr_funcs_name[-1])
+        print(self.curr_funcs_name[-1])
+        func_stat = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)
         func_stat['attr']['code_addr'] = self.i
         func_stat['attr']['param_count'] = self.curr_param_count
         self.curr_param_count = 0
 
 
     def func_end(self, lookahead, lineno):
-        # todo: if func==main?!
+        return_addr = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)['attr']['return_addr']
         self.scope -= 1
-        return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
         func_name = self.curr_funcs_name[-1]
         if func_name != 'main':
             self.insert_code(f'(JP, @{return_addr}, , )')
@@ -364,33 +348,32 @@ class CodeGenerator:
 
 
     def set_return_value(self, lookahead, lineno):
-        addr = self.ST.get_by_name(self.curr_funcs_name[-1])['addr']
+        addr = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)['addr']
         self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
         self.pop()
     
 
     def func_return(self, lookahead, lineno):
-        return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
+        return_addr = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)['attr']['return_addr']
         self.insert_code(f'(JP, @{return_addr}, , )')
 
 
-    def _is_var_array(self, var):
-        if 'count' in var['attr'].keys():
-            return True
-        return False
-
     def func_arg(self, lookahead, lineno):
-        i = self.ST.get_index(self.curr_funcs_name[-1])
+        i = self.ST.get_index(self.curr_funcs_name[-1], self.scope)
         self.curr_param_count += 1
         func_arg = self.ST.table[i+self.curr_param_count]
 
+        # check semantic error: num of arguments
+        func = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)
+        if self.curr_param_count > func['attr']['param_count']:
+            self.semantic_checker.param_num_matching(lineno, func['lexptr'])
         # check semantic error: argument type
-        invoke_arg = self.ST.get_by_addr(self.stack[-1])
-        func_arg_type = 'array' if self._is_var_array(func_arg) else 'int'
-        invoke_arg_type = 'array' if self._is_var_array(invoke_arg) else 'int'
-        if func_arg_type != invoke_arg_type:
-            self.semantic_checker.param_type_matching(
-                lineno, self.curr_param_count, self.curr_funcs_name[-1],func_arg_type, invoke_arg_type)
+        else:
+            func_arg_type = self.ST.get_type(func_arg['addr'], self.scope)
+            invoke_arg_type = self.ST.get_type(self.stack[-1], self.scope)
+            if func_arg_type != invoke_arg_type:
+                self.semantic_checker.param_type_matching(
+                    lineno, self.curr_param_count, self.curr_funcs_name[-1],func_arg_type, invoke_arg_type)
 
         addr = func_arg['addr']
         self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
@@ -398,12 +381,7 @@ class CodeGenerator:
     
 
     def func_call(self, lookahead, lineno):
-        func = self.ST.get_by_name(self.curr_funcs_name[-1])
-
-        # check semantic error: num of arguments
-        if self.curr_param_count != func['attr']['param_count']:
-            self.semantic_checker.param_num_matching(lineno, func['lexptr'])
-
+        func = self.ST.get_by_name(self.curr_funcs_name[-1], self.scope)
         func_addr = func['attr']['code_addr']
         return_addr = func['attr']['return_addr']
         self.insert_code(f'(ASSIGN, #{self.i+2}, {return_addr})')
@@ -412,13 +390,13 @@ class CodeGenerator:
 
         t = self.memory.get_tmp()
         if func['type'] != 'void':
-            # todo: where will we use t??
             self.insert_code(f"(ASSIGN, {func['addr']}, {t}, )")
         self.push(t)
         self.curr_funcs_name.pop()
 
 
     def func_name(self, lookahead, lineno):
+        print(self.stack[-1])
         func = self.ST.get_by_addr(self.stack[-1])
         self.curr_funcs_name.append(func['lexptr'])
         self.pop()

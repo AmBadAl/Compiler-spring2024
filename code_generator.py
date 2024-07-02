@@ -278,18 +278,23 @@ class CodeGenerator:
     def var_end(self, lookahead, lineno):
         if self.stack[-1].startswith('#'):
             #array
-            attr = {'count': self.stack[-1]}
-            self.ST.add_variable(self.stack[-2], self.stack[-3], attributes=attr)
-            arr = self.ST.table[-1]['addr']
-            first_elem_addr = arr + 4
-            self.insert_code(f"(ASSIGN, #{first_elem_addr}, {arr}, )")
+            arr_type = self.stack[-3]
+            if arr_type == 'void':
+                self.semantic_checker.void_type(lineno=lineno, id=self.stack[-2])
+            else:
+                attr = {'count': self.stack[-1]}
+                self.ST.add_variable(self.stack[-2], self.stack[-3], attributes=attr)
+                arr = self.ST.table[-1]['addr']
+                first_elem_addr = arr + 4
+                self.insert_code(f"(ASSIGN, #{first_elem_addr}, {arr}, )")
             self.pop(3)
         else:
             #simple var
             var_type = self.stack[-2]
             if var_type == 'void':
-                self.semantic_checker.void_type()
-            self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=None)
+                self.semantic_checker.void_type(lineno=lineno, id=self.stack[-1])
+            else:
+                self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=None)
             self.pop(2)
 
     def func_start(self, lookahead, lineno):
@@ -303,10 +308,14 @@ class CodeGenerator:
             self.insert_code('')
 
     def param_end(self, lookahead, lineno):
-        attr = {'kind': 'param'}
-        self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
+        param_type = self.stack[-2]
+        if param_type == 'void':
+            self.semantic_checker.void_type(lineno=lineno, id=self.stack[-1])
+        else:
+            attr = {'kind': 'param'}
+            self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
+            self.curr_param_count += 1
         self.pop(2)
-        self.curr_param_count += 1
 
     def params_end(self, lookahead, lineno):
         # attr = {'code_addr': self.i, 'param_count': self.curr_param_count}

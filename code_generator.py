@@ -100,11 +100,37 @@ class SymbolTable:
         return None
 
 
+class SemanticChecker:
+
+    def __init__(self):
+        self.errors = []
+
+    def scoping(self, lineno, id):
+        self.errors.append(f'#{lineno}: Semantic Error! {id} is not defined.')
+
+    def void_type(self, lineno, id):
+        self.errors.append(f'#{lineno}: Semantic Error! Illegal type of void for {id}.')
+    
+    def param_num_matching(self, lineno, id):
+        self.errors.append(f'#{lineno}: Semantic Error! Mismatch in numbers of arguments of {id}.')
+    
+    def param_type_matching(self, lineno, N, id, type1, type2):
+        self.errors.append(f'#{lineno}: Semantic Error! Mismatch in type of argument {N} for {id}. Expected {type1} but got {type2} instead.')
+
+    def type_mismatch(self, lineno, type1, type2):
+        self.errors.append(f'#{lineno}: Semantic Error! Type mismatch in operands, Got {type2} instead of {type1}.')
+    
+    def break_statement(self, lineno):
+        self.errors.append(f'#{lineno}: Semantic Error! No \'while\' found for \'break\'.')
+    
+
+
 class CodeGenerator:
 
     def __init__(self):
         self.memory = Memory()
         self.ST = SymbolTable(self.memory)
+        self.semantic_checker = SemanticChecker()
         self.stack = []
         self.PB = []
         self.i = 0

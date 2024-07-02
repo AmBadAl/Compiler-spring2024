@@ -83,7 +83,7 @@ class Parser():
                                 self.current_node = old_node
                             elif elem.startswith("#"):
                                 token_lex = self.token[1]
-                                result = result and self.code_generator.code_gen(elem[1:], token_lex)
+                                result = result and self.code_generator.code_gen(elem[1:], lineno=self.line_number, lookahead=token_lex)
                             else:
                                 new_node = Node(self.token, parent=self.current_node)
                                 old_node = self.current_node

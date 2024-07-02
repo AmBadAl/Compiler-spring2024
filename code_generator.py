@@ -166,26 +166,26 @@ class CodeGenerator:
         for i in range(n):
             self.stack.pop()
 
-    def save(self, lookahead):
+    def save(self, lookahead, lineno):
         self.push(self.i)
         self.insert_code('(, , , )')
         # self.i += 1
 
-    def jpf_save(self, lookahead):
+    def jpf_save(self, lookahead, lineno):
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i + 1}, )', i=self.stack[-1])
         self.pop(2)
         self.push(self.i)
         self.insert_code('')
 
-    def jp(self, lookahead):
+    def jp(self, lookahead, lineno):
         self.insert_code(f'(JP, {self.i}, , )', i=self.stack[-1])
         self.pop(1)
 
-    def jpf(self, lookahead):
+    def jpf(self, lookahead, lineno):
         self.insert_code(f'(JPF, {self.stack[-2]}, {self.i}, )', i=self.stack[-1])
         self.pop(2)
 
-    def pid(self, lookahead):
+    def pid(self, lookahead, lineno):
         row = self.ST.get_by_name(lookahead)
         if row is None:
             #todo: handle semantic errors
@@ -193,7 +193,7 @@ class CodeGenerator:
         else:
             self.push(row['addr'])
         
-    def relop(self, lookahead):
+    def relop(self, lookahead, lineno):
         a, relop, b = self.stack[-3:]
         #todo: check type of a and b for semantic errors
         t = self.memory.get_tmp()
@@ -204,7 +204,7 @@ class CodeGenerator:
         self.pop(3)
         self.push(t)
 
-    def add_sub(self, lookahead):
+    def add_sub(self, lookahead, lineno):
         a, op, b = self.stack[-3:]
         #todo: check type of a and b for semantic errors
         t = self.memory.get_tmp()
@@ -215,7 +215,7 @@ class CodeGenerator:
         self.pop(3)
         self.push(t)
 
-    def mult(self, lookahead):
+    def mult(self, lookahead, lineno):
         a, b = self.stack[-2:]
         #todo: check type of a and b for semantic errors
         t = self.memory.get_tmp()
@@ -223,13 +223,13 @@ class CodeGenerator:
         self.pop(2)
         self.push(t)
 
-    def assign(self, lookahead):
+    def assign(self, lookahead, lineno):
         b, a = self.stack[-2:]
         #todo: check type of a and b for semantic errors
         self.insert_code(f'(ASSIGN, {a}, {b})')
         self.pop(1)
     
-    def get_arr(self, lookahead):
+    def get_arr(self, lookahead, lineno):
         t1 = self.memory.get_tmp()
         #todo: check t1 type
         self.insert_code(f'(MULT, #4, {self.stack[-1]}, {t1})')
@@ -239,31 +239,31 @@ class CodeGenerator:
         self.pop()
         self.push(f'@{t2}')
 
-    def for_loop(self, lookahead):
+    def for_loop(self, lookahead, lineno):
         t = self.memory.get_tmp()
         self.curr_loops_name.append(t)
         self.push(t)
         self.push(self.i)
         self.insert_code('')
 
-    def for_label(self, lookahead):
+    def for_label(self, lookahead, lineno):
         self.push(self.i)
     
-    def for_jpf(self, lookahead):
+    def for_jpf(self, lookahead, lineno):
         self.push(self.i)
         self.insert_code('')
         self.push(self.i)
         self.insert_code('')
     
-    def for_jp_loop(self, lookahead):
+    def for_jp_loop(self, lookahead, lineno):
         for_label = self.stack[-4]
         self.insert_code(f'(JP, {for_label}, , )')
 
-    def for_statement(self, lookahead):
+    def for_statement(self, lookahead, lineno):
         for_jpf = self.stack[-1]
         self.insert_code(f'(JP, {self.i}, , )', i=for_jpf)
 
-    def for_jp(self, lookahead):
+    def for_jp(self, lookahead, lineno):
         t, for_begin, for_label, rel_op, for_jpf, for_step = self.stack[-6:]
         self.insert_code(f'(JP, {for_step+1}, , )')
         self.insert_code(f'(ASSIGN, #{self.i}, {t}, )', i=for_begin)
@@ -271,11 +271,11 @@ class CodeGenerator:
         self.pop(6)
         self.curr_loops_name.pop()
 
-    def break_loop(self, lookahead):
+    def break_loop(self, lookahead, lineno):
         t = self.curr_loops_name[-1]
         self.insert_code(f'(JP, @{t}, , )')
     
-    def var_end(self, lookahead):
+    def var_end(self, lookahead, lineno):
         if self.stack[-1].startswith('#'):
             #array
             attr = {'count': self.stack[-1]}
@@ -286,10 +286,13 @@ class CodeGenerator:
             self.pop(3)
         else:
             #simple var
+            var_type = self.stack[-2]
+            if var_type == 'void':
+                self.semantic_checker.void_type()
             self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=None)
             self.pop(2)
 
-    def func_start(self, lookahead):
+    def func_start(self, lookahead, lineno):
         # todo: if func==main?!
         self.ST.add_function(self.stack[-1], self.stack[-2], attributes=None)
         func_name = self.stack[-1]
@@ -299,13 +302,13 @@ class CodeGenerator:
             self.push(self.i)
             self.insert_code('')
 
-    def param_end(self, lookahead):
+    def param_end(self, lookahead, lineno):
         attr = {'kind': 'param'}
         self.ST.add_variable(self.stack[-1], self.stack[-2], attributes=attr)
         self.pop(2)
         self.curr_param_count += 1
 
-    def params_end(self, lookahead):
+    def params_end(self, lookahead, lineno):
         # attr = {'code_addr': self.i, 'param_count': self.curr_param_count}
         func_stat = self.ST.get_by_name(self.curr_funcs_name[-1])
         func_stat['attr']['code_addr'] = self.i
@@ -313,7 +316,7 @@ class CodeGenerator:
         self.curr_param_count = 0
 
 
-    def func_end(self, lookahead):
+    def func_end(self, lookahead, lineno):
         # todo: if func==main?!
         return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
         func_name = self.curr_funcs_name[-1]
@@ -324,18 +327,18 @@ class CodeGenerator:
         self.curr_funcs_name.pop()
 
 
-    def set_return_value(self, lookahead):
+    def set_return_value(self, lookahead, lineno):
         addr = self.ST.get_by_name(self.curr_funcs_name[-1])['addr']
         self.insert_code(f'(ASSIGN, {self.stack[-1]}, {addr}, )')
         self.pop()
     
 
-    def func_return(self, lookahead):
+    def func_return(self, lookahead, lineno):
         return_addr = self.ST.get_by_name(self.curr_funcs_name[-1])['attr']['return_addr']
         self.insert_code(f'(JP, @{return_addr}, , )')
 
 
-    def func_arg(self, lookahead):
+    def func_arg(self, lookahead, lineno):
         i = self.ST.get_index(self.curr_funcs_name[-1])
         self.curr_param_count += 1
         addr = self.ST.table[i+self.curr_param_count]['addr']
@@ -343,7 +346,7 @@ class CodeGenerator:
         self.pop()
     
 
-    def func_call(self, lookahead):
+    def func_call(self, lookahead, lineno):
         func = self.ST.get_by_name(self.curr_funcs_name[-1])
         func_addr = func['attr']['code_addr']
         return_addr = func['attr']['return_addr']
@@ -359,13 +362,13 @@ class CodeGenerator:
         self.curr_funcs_name.pop()
 
 
-    def func_name(self, lookahead):
+    def func_name(self, lookahead, lineno):
         func = self.ST.get_by_addr(self.stack[-1])
         self.curr_funcs_name.append(func['lexptr'])
         self.pop()
 
 
-    def signed_fac(self, lookahead):
+    def signed_fac(self, lookahead, lineno):
         sign, factor = self.stack[-2:]
         self.pop(2)
         if sign == '-' and str(factor).startswith('#'):
@@ -377,13 +380,13 @@ class CodeGenerator:
         self.push(factor)
         
 
-    def code_gen(self, action, lookahead=None):
+    def code_gen(self, action, lineno, lookahead=None):
         semantic_func = getattr(self, action)
         if semantic_func is None:
             print(f'invalid action: {action}')
             return False
         
-        semantic_func(lookahead)
+        semantic_func(lookahead, lineno)
         return True
         if (action == 'push'):
             self.push(lookahead)
